@@ -1,0 +1,70 @@
+from dataclasses import dataclass
+from typing import List
+from lexico import Token
+
+@dataclass
+class Symbols:
+    name: str
+    type: str
+    scope: str
+
+
+class Semantic:
+    symbol_table: List[Symbols] = [Symbols('0', '0', '0')]
+    scope = 'global'
+    quee_insert: List[Token] = []
+    type = ''
+    first_type = False
+    skip = False
+
+    def search(self, token: Token):
+        for ident in self.symbol_table:
+            if ident.name == token.nome and (ident.scope == self.scope or ident.scope == 'global'):
+                return True
+        else:
+            return False
+
+    def local_search(self, token: Token):
+        for ident in self.symbol_table:
+            if ident.name == token.nome and (ident.scope == self.scope):
+                return True
+        else:
+            return False
+
+    def local_search_type(self, token: Token):
+        for ident in self.symbol_table:
+            if ident.name == token.nome and (ident.scope == self.scope):
+                return ident.type
+
+    def insert(self, type):
+        flag_error = False
+        error = ""
+        for ident in self.quee_insert:
+            if not self.local_search(ident) or ident.type == 'REAL' or ident.type == 'INTEGER':
+                self.symbol_table.append(Symbols(ident.nome, type, self.scope))
+            else:
+                print(ident.type)
+                flag_error = True
+                error += "Erro Semantico: a variavel '{}' na linha {} já foi declarada \n".format(ident.nome, ident.line)
+        else:
+            self.quee_insert = []
+            if flag_error:
+                raise SyntaxError(error)
+
+    def append(self, token: Token):
+        self.quee_insert.append(token)
+
+    def add_type(self, token: Token):
+        if self.first_type:
+            type = self.local_search_type(token)
+            self.type = type
+            self.first_type = False
+
+    def check_type(self, token: Token):
+        if not self.skip:
+            type = self.local_search_type(token)
+            self.add_type(token)
+            if not self.type == type:
+                raise SyntaxError("Erro Semantico: a variavel '{}' na linha {} é do tipo {}, esperava-se uma variavel do tipo {} \n".format(token.nome, token.line, type, self.type))
+
+semantic = Semantic()
